@@ -1,0 +1,1 @@
+ALTER TYPE "public"."financial_review_definition_kind" ADD VALUE 'system' BEFORE 'accountant_input';

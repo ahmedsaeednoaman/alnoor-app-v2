@@ -1,0 +1,2 @@
+ALTER TYPE "public"."financial_item_source_type" ADD VALUE 'anesthesiologist' BEFORE 'procedure';--> statement-breakpoint
+ALTER TYPE "public"."financial_item_source_type" ADD VALUE 'technician' BEFORE 'procedure';

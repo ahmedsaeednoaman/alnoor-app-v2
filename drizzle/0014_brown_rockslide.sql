@@ -1,0 +1,2 @@
+ALTER TABLE "operation_financial_reviews" DROP CONSTRAINT "financial_review_amounts_nonnegative";--> statement-breakpoint
+ALTER TABLE "operation_financial_reviews" ADD CONSTRAINT "financial_review_amounts_nonnegative" CHECK ("operation_financial_reviews"."main_amount" >= 0);

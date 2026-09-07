@@ -1,0 +1,2 @@
+import type {Metadata} from "next";import {redirect} from "next/navigation";import {DoctorAccountsList} from "@/components/accounting/doctor-accounts-list";import {getCurrentSession} from "@/lib/auth/session";import {listDoctorAccounts} from "@/lib/doctor-accounts";
+export const metadata:Metadata={title:"حسابات الأطباء"};export default async function Page(){const auth=await getCurrentSession();if(!auth)redirect("/login");if(!auth.user.permissions.includes("doctor_accounts.view"))redirect("/");return <DoctorAccountsList initialDoctors={await listDoctorAccounts()}/>;}

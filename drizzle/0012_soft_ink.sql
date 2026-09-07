@@ -1,0 +1,1 @@
+ALTER TABLE "operation_stents" ADD CONSTRAINT "operation_stents_stent_id_stents_id_fk" FOREIGN KEY ("stent_id") REFERENCES "public"."stents"("id") ON DELETE restrict ON UPDATE cascade;

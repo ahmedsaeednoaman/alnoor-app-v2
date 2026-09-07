@@ -1,0 +1,2 @@
+import { redirect } from "next/navigation";import { OperationEditor } from "@/components/operations/operation-editor";import { getCurrentSession } from "@/lib/auth/session";
+export default async function Page({params}:{params:Promise<{operationId:string}>}){const auth=await getCurrentSession();if(!auth)redirect("/login");if(!auth.user.permissions.includes("operations.view"))redirect("/");return <OperationEditor id={(await params).operationId}/>}

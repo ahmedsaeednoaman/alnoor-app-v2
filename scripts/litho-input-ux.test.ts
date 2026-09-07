@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { normalizeMoneyInput } from "@/components/operations/money-input";
+import { initialWorkFormValues, selectOptions } from "@/components/operations/work-form-rendering";
+
+assert.equal(normalizeMoneyInput(""), "");
+assert.equal(normalizeMoneyInput("0"), "0");
+assert.equal(normalizeMoneyInput("450"), "450");
+assert.equal(normalizeMoneyInput("450.5"), "450.5");
+assert.equal(normalizeMoneyInput("450.509"), "450.50");
+assert.equal(normalizeMoneyInput("450abc"), "450");
+assert.deepEqual(selectOptions({ stableKey: "session_count" } as never), [], "Session choices must not be duplicated in static form options");
+const initialized = initialWorkFormValues({ version: 1, sections: [{ id: "section", stableKey: "section", label: "اختبار", description: null, sortOrder: 0, isSystemSection: false, archivedAt: null, fields: [{ id: "session", stableKey: "session_count", label: "الجلسة", description: null, fieldType: "number", required: true, multiple: false, minSelections: null, maxSelections: null, smartDropdownSource: null, showInForm: true, showInDetails: true, showInFinancialReview: true, showInPrint: true, isFinancial: false, financialEffect: null, reviewRole: "context", isSystemField: true, archivedAt: null }] }] } as never);
+assert.equal(initialized.session_count, 1, "Dynamic session defaults must remain numeric at the create boundary");
+assert.equal(typeof initialized.session_count, "number", "Session IDs must not be represented by a numeric-looking string");
+const renderer = readFileSync(resolve("src/components/operations/work-form-renderer.tsx"), "utf8");
+assert.match(renderer, /fetch\("\/api\/v1\/lithotripsy\/sessions"/, "Session choices must come from the authoritative session catalog");
+assert.match(renderer, /field\.stableKey === "session_count" \? sessionOptions/, "The session field must render dynamic catalog choices");
+console.log("Lithotripsy input UX checks passed (money parser, blank/zero, dynamic session choices)");

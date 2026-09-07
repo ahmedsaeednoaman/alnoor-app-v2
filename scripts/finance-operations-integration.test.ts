@@ -1,0 +1,23 @@
+import { postgresClient } from "@/db/client";
+import { getDynamicOperationDetails } from "@/lib/operations/details";
+import { listOperations } from "@/lib/operations/service";
+import { getFinancialReviewOperation } from "@/lib/accounting/review";
+const main = async () => {
+  const [operation] = await postgresClient.unsafe<Array<{ id: string; type: string; operation_date: string }>>("select id,type,operation_date from operations where status='recorded' and form_template_id is not null order by created_at desc limit 1");
+  if (!operation) throw new Error("No recorded operation available");
+  const [owner] = await postgresClient.unsafe<Array<{ id: string }>>("select u.id from users u join roles r on r.id=u.base_role_id where r.code='owner' order by u.created_at asc limit 1");
+  if (!owner) throw new Error("No owner user available for integration checks");
+  const auth = { id: owner.id, role: { code: "owner" }, permissions: ["operations.view", "accounting.review", "accounting.finance.view"] };
+  const list = await listOperations({ limit: 100, offset: 0, type: operation.type as never }, auth);
+  if (!list.operations.some((row) => row.id === operation.id)) throw new Error("operation missing from list");
+  const details = await getDynamicOperationDetails(operation.id, auth, true);
+  if (!details.operation || !details.sections?.length) throw new Error("historical operation details missing");
+  const review = await getFinancialReviewOperation(operation.id, auth);
+  if (!review.operation || !review.financialSummary) throw new Error("financial review contract missing");
+  const sourceKeys = new Set((review.operationalCostSources ?? []).map((source) => `${source.sourceFieldId ?? ""}:${source.sourceReferenceId ?? ""}`));
+  if ((review.suggestions ?? []).some((item) => sourceKeys.has(`${item.sourceFieldId ?? ""}:${item.sourceReferenceId ?? ""}`))) throw new Error("operational source duplicated as manual suggestion");
+  const [columns] = await postgresClient.unsafe<Array<{ count: number }>>("select count(*)::int count from financial_review_definitions where operation_type=$1::operation_type and active=true", [operation.type]);
+  if (!columns.count) throw new Error("configured financial layout missing");
+  console.log("finance operations integration checks passed (list, details, review, layout)");
+};
+main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => postgresClient.end({ timeout: 1 }));

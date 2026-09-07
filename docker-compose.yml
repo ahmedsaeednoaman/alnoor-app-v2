@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: alnoor
+      POSTGRES_PASSWORD: alnoor_dev_password
+      POSTGRES_DB: alnoor_medical_operations
+    ports:
+      - "5432:5432"
+    volumes:
+      - alnoor_pgdata:/var/lib/postgresql/data
+
+volumes:
+  alnoor_pgdata:

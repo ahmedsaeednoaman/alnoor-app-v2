@@ -1,0 +1,2 @@
+ALTER TABLE "work_form_templates" ADD CONSTRAINT "work_form_templates_based_on_fk" FOREIGN KEY ("based_on_template_id") REFERENCES "public"."work_form_templates"("id") ON DELETE restrict ON UPDATE cascade;--> statement-breakpoint
+CREATE UNIQUE INDEX "work_form_templates_one_draft_per_type" ON "work_form_templates" USING btree ("operation_type") WHERE "work_form_templates"."status" = 'draft';

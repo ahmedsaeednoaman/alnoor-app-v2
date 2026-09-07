@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";import { requirePermission } from "@/lib/auth/guards";import { operationError,requestId } from "@/lib/operations/api";import { postDoctorAccount } from "@/lib/operations/service";
+export async function POST(_request:Request,{params}:{params:Promise<{operationId:string}>}){const id=requestId();try{const auth=await requirePermission("doctor_accounts.post");const posting=await postDoctorAccount((await params).operationId,auth.user);return NextResponse.json({posting},{status:201});}catch(e){return operationError(e,id)}}

@@ -1,0 +1,2 @@
+ALTER TABLE "doctor_account_postings" ADD COLUMN "direction" varchar(16) DEFAULT 'debit' NOT NULL;--> statement-breakpoint
+ALTER TABLE "doctor_account_postings" ADD CONSTRAINT "doctor_account_posting_direction_valid" CHECK ("doctor_account_postings"."direction" in ('debit','credit'));

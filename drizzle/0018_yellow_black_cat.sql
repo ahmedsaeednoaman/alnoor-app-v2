@@ -1,0 +1,2 @@
+ALTER TABLE "operation_financial_items" ADD COLUMN "definition_id" uuid;--> statement-breakpoint
+ALTER TABLE "operation_financial_items" ADD CONSTRAINT "operation_financial_items_definition_id_financial_review_definitions_id_fk" FOREIGN KEY ("definition_id") REFERENCES "public"."financial_review_definitions"("id") ON DELETE restrict ON UPDATE cascade;
