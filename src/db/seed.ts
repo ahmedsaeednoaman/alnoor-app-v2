@@ -174,20 +174,6 @@ async function main() {
     process.env
       .BOOTSTRAP_OWNER_PASSWORD;
 
-  if (!password) {
-    throw new Error(
-      "BOOTSTRAP_OWNER_PASSWORD is required",
-    );
-  }
-
-  if (
-    password.length < 12
-  ) {
-    throw new Error(
-      "BOOTSTRAP_OWNER_PASSWORD must be at least 12 characters",
-    );
-  }
-
   /* ========================================
      PERMISSION CATALOG
      ======================================== */
@@ -260,6 +246,20 @@ async function main() {
 
     ownerId = existingUser.id;
   } else {
+    if (!password) {
+      throw new Error(
+        "BOOTSTRAP_OWNER_PASSWORD is required",
+      );
+    }
+
+    if (
+      password.length < 12
+    ) {
+      throw new Error(
+        "BOOTSTRAP_OWNER_PASSWORD must be at least 12 characters",
+      );
+    }
+
     const passwordHash =
     await argon2.hash(
       password,

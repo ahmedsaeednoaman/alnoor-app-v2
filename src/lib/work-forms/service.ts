@@ -108,7 +108,7 @@ export async function bootstrapInitialWorkForms(userId: string | null) {
     if (userId) {
       for (const name of ["نصفي", "كلي"]) {
         await tx.unsafe(
-          "INSERT INTO anesthesia_types(name,normalized_name,created_by_user_id) SELECT $1,$2,$3::uuid WHERE NOT EXISTS (SELECT 1 FROM anesthesia_types WHERE normalized_name=$2 AND archived_at IS NULL)",
+          "INSERT INTO anesthesia_types(name,normalized_name,created_by_user_id) SELECT $1::varchar(200),$2::varchar(200),$3::uuid WHERE NOT EXISTS (SELECT 1 FROM anesthesia_types WHERE normalized_name=$2::varchar(200) AND archived_at IS NULL)",
           [name, name.toLocaleLowerCase("ar"), userId],
         );
       }
