@@ -1,5 +1,7 @@
 "use client";
 
+import { beginAuthTransition } from "@/lib/auth/client-request-scope";
+
 import {
   useState,
 } from "react";
@@ -311,6 +313,7 @@ export function LoginForm() {
         LoginValues,
     ) => {
       try {
+        const settleTransition = beginAuthTransition();
         const response =
           await fetch(
             "/api/v1/auth/login",
@@ -328,7 +331,7 @@ export function LoginForm() {
                   values,
                 ),
             },
-          );
+          ).finally(settleTransition);
 
         const body =
           (await response

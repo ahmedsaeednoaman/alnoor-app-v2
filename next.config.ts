@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    qualities: [75, 90],
+  },
   // Node.js 24 can drop captured output from the detached TypeScript CLI
   // process. Using the compiler API keeps type-checking reliable.
   experimental: {

@@ -1,5 +1,7 @@
 "use client";
 
+import { beginAuthTransition } from "@/lib/auth/client-request-scope";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -210,9 +212,10 @@ export function AppSidebar({
     });
 
     try {
+      const settleTransition = beginAuthTransition();
       const response = await fetch("/api/v1/auth/logout", {
         method: "POST",
-      });
+      }).finally(settleTransition);
 
       if (!response.ok) {
         throw new Error("Logout failed");

@@ -29,7 +29,39 @@ const countLabel=(count:number)=>count===1?"حالة واحدة":count===2?"حا
 export function OperationsList({canEditAll,isEmployee,canCreateInvoice=false,defaultMonth}:{canEditAll:boolean;isEmployee:boolean;canCreateInvoice?:boolean;defaultMonth:CalendarMonth}){
  const params=useSearchParams(), queryString=params.toString();
  const type=params.get("type")||"", doctor=params.get("doctorId")||"", hospital=params.get("hospitalId")||"", search=params.get("search")||"", invoiceStatus=params.get("invoiceStatus")||"all";
+ // A draft belongs to the URL where typing began; navigation wins over pending input.
+ const [searchDraft,setSearchDraft]=useState<{query:string;value:string}|null>(null);
+ const searchInput=searchDraft?.query===queryString?searchDraft.value:search;
+ useEffect(()=>{
+   if(!searchDraft)return;
+   if(searchDraft.query!==queryString){setSearchDraft(null);return}
+   if(searchDraft.value===search)return;
+   const timer=window.setTimeout(()=>{
+     if(new URLSearchParams(window.location.search).toString()!==queryString)return;
+     const next=canonicalOperationsQuery(updateOperationsQuery(queryString,{search:searchDraft.value}),{year:defaultMonth.year,month:defaultMonth.month});
+     window.history.replaceState(null,"",`?${next}${window.location.hash}`);
+     setSearchDraft(null);
+   },300);
+   const cancelForHistory=()=>{window.clearTimeout(timer);setSearchDraft(null)};
+   window.addEventListener("popstate",cancelForHistory);
+   return()=>{window.clearTimeout(timer);window.removeEventListener("popstate",cancelForHistory)};
+ },[searchDraft,queryString,search,defaultMonth.year,defaultMonth.month]);
  const[items,setItems]=useState<OperationalReviewItem[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[detailId,setDetailId]=useState<string|null>(null),[invoiceOperation,setInvoiceOperation]=useState<OperationalReviewItem|null>(null),[showFilters,setShowFilters]=useState<boolean|null>(null);
+ // URL-selected references need their options to resolve labels, even while hidden.
+ const [hasOpenedFilters,setHasOpenedFilters]=useState(Boolean(doctor||hospital));
+ const mountReferenceFilters=hasOpenedFilters||showFilters===true||Boolean(doctor||hospital);
+ useEffect(()=>{
+   if(hasOpenedFilters)return;
+   const desktop=window.matchMedia("(min-width: 768px)");
+   const activate=()=>{
+     if(doctor||hospital||showFilters===true||(showFilters===null&&desktop.matches))setHasOpenedFilters(true);
+   };
+   activate();
+   // Follow the CSS default until the user explicitly opens/closes the panel.
+   if(showFilters!==null)return;
+   desktop.addEventListener("change",activate);
+   return()=>desktop.removeEventListener("change",activate);
+ },[doctor,hospital,showFilters,hasOpenedFilters]);
  const[pagination,setPagination]=useState({page:1,pageSize:25,total:0,totalPages:0,hasNext:false,hasPrevious:false});
  const requestVersion=useRef(0);
  const[range,setRange]=useState({from:"",to:""});
@@ -57,16 +89,16 @@ export function OperationsList({canEditAll,isEmployee,canCreateInvoice=false,def
  <div className="operation-segments" role="tablist" aria-label="نوع العمليات">{[["","الكل"],["lithotripsy","التفتيت"],["endoscopy","المناظير"],["contract","التعاقد"]].map(([value,label])=><button role="tab" aria-selected={type===value} className={type===value?"active":""} onClick={()=>update({type:value})} key={value}>{label}</button>)}</div>
  <div className="operations-filter-toggle"><CompactMonthFilter year={selectedMonth.year} month={selectedMonth.month} monthlyScope={params.get("period")==="month"} onMonthChange={navigateMonth}/>{showFilters===null?<><button className="operations-toggle-desktop" aria-expanded="true" aria-controls="operations-filter-panel" onClick={toggleFilters}>⌕ تصفية الفلاتر{activeCount>0?` (${activeCount})`:""}</button><button className="operations-toggle-mobile" aria-expanded="false" aria-controls="operations-filter-panel" onClick={toggleFilters}>⌕ تصفية الفلاتر{activeCount>0?` (${activeCount})`:""}</button></>:<button aria-expanded={showFilters} aria-controls="operations-filter-panel" onClick={toggleFilters}>⌕ تصفية الفلاتر{activeCount>0?` (${activeCount})`:""}</button>}</div>
  <section id="operations-filter-panel" className={`operation-filters operations-list-filters ${showFilters===null?"responsive-default":showFilters?"is-open":"is-closed"}`}>
- <div className="operation-grid"><label>البحث<input value={search} onChange={event=>update({search:event.target.value})} placeholder="اسم الحالة أو الرقم الموحد"/></label><label>من<input type="date" disabled={loading} value={from} onChange={event=>changeDate("from",event.target.value)}/></label><label>إلى<input type="date" disabled={loading} value={to} onChange={event=>changeDate("to",event.target.value)}/></label><SmartSelect label="الطبيب" type="doctors" value={doctor} onChange={value=>update({doctorId:value as string})} canManage={false}/><SmartSelect label="المستشفى" type="hospitals" value={hospital} onChange={value=>update({hospitalId:value as string})} canManage={false}/><label>حالة الفاتورة<select value={invoiceStatus} onChange={event=>update({invoiceStatus:event.target.value})}><option value="all">الكل</option><option value="pending">فواتير معلقة</option><option value="completed">فواتير مكتملة</option><option value="latest">أحدث فاتورة مُصدرة</option></select></label></div>
+ <div className="operation-grid"><label>البحث<input value={searchInput} onChange={event=>setSearchDraft({query:queryString,value:event.target.value})} placeholder="اسم الحالة أو الرقم الموحد"/></label><label>من<input type="date" disabled={loading} value={from} onChange={event=>changeDate("from",event.target.value)}/></label><label>إلى<input type="date" disabled={loading} value={to} onChange={event=>changeDate("to",event.target.value)}/></label>{mountReferenceFilters&&<><SmartSelect label="الطبيب" type="doctors" value={doctor} onChange={value=>update({doctorId:value as string})} canManage={false}/><SmartSelect label="المستشفى" type="hospitals" value={hospital} onChange={value=>update({hospitalId:value as string})} canManage={false}/></>}<label>حالة الفاتورة<select value={invoiceStatus} onChange={event=>update({invoiceStatus:event.target.value})}><option value="all">الكل</option><option value="pending">فواتير معلقة</option><option value="completed">فواتير مكتملة</option><option value="latest">أحدث فاتورة مُصدرة</option></select></label></div>
  {activeDraft&&<small role="status">{!from||!to?"أكمل بداية ونهاية الفترة لتطبيقها.":"نهاية الفترة يجب ألا تسبق بدايتها."}</small>}
  <button type="button" onClick={()=>{setDateDraft(null);navigateMonth(defaultMonth)}}>الفترة الافتراضية — الشهر الحالي</button></section>
  {loading&&<small role="status">جارٍ تحديث النتائج…</small>}
  {error?<p className="operations-state error" role="alert">{error}</p>:!items.length&&!loading?<p className="operations-state">{type?typeEmpty[type as keyof typeof typeEmpty]:"لا توجد عمليات في الفترة المحددة"}</p>:days.map(day=><section className="operations-day" key={day.date}><header><h3>{dayFormatter.format(new Date(`${day.date}T12:00:00Z`))}</h3><span>{countLabel(day.operations.length)}</span></header><div className="operation-timeline">{day.operations.map(operation=><article className="operations-list-row" key={operation.id}>
- <div className="operations-row-identity"><div className="operations-row-heading"><b>#{operation.dailySequence}</b><time>{operation.operationTime}</time></div><strong>{operation.caseName?.trim()||"بدون اسم حالة"}</strong></div>
+ <div className="operations-row-identity"><strong className="operations-row-case">{operation.caseName?.trim()||"بدون اسم حالة"}</strong><div className="operations-row-heading"><b>#{operation.dailySequence}</b><time>{operation.operationTime}</time></div></div>
  <div className="operations-row-details">
    <span className="operations-row-type">{typeLabels[operation.type]}</span>
-   <span className="operations-row-field"><small className="operations-row-label">الطبيب</small><span className="operations-row-value">{operation.doctorName}</span></span>
-   <span className="operations-row-field"><small className="operations-row-label">المستشفى</small><span className="operations-row-value">{operation.hospitalName}</span></span>
+   <span className="operations-row-field operations-row-doctor"><small className="operations-row-label">الطبيب</small><span className="operations-row-value">{operation.doctorName}</span></span>
+   <span className="operations-row-field operations-row-hospital"><small className="operations-row-label">المستشفى</small><span className="operations-row-value">{operation.hospitalName}</span></span>
  </div>
  <div className="operations-row-invoice">{operation.taxInvoice?<span className="operations-invoice-complete">✓ {operation.taxInvoice.registryLabel} <bdi>{operation.taxInvoice.invoiceNumber}</bdi></span>:<>{operation.type==="contract"&&<span className="operations-invoice-pending">● لم تصدر فاتورة</span>}{canCreateInvoice&&<button type="button" onClick={()=>setInvoiceOperation(operation)}>{operation.type==="contract"?"إصدار فاتورة":"+ فاتورة"}</button>}</>}</div>
  <div className="operations-row-actions"><button type="button" onClick={()=>setDetailId(operation.id)}>فتح الحالة</button>{(isEmployee?operation.employeeEditWindow:canEditAll)&&<Link href={`/operations/${operation.id}/edit`}>تعديل</Link>}</div>

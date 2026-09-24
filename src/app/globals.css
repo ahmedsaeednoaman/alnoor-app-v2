@@ -2679,6 +2679,43 @@ div.swal2-container {
   place-items: center;
 }
 
+/* Scope verification sits outside AppShell and needs the full viewport. */
+.app-route-loading--fullscreen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+.app-route-loading__actions {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.app-route-loading__actions button {
+  flex: 1 1 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  background: var(--app-surface);
+  color: var(--app-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-route-loading__actions button:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 3px;
+}
+
+.app-route-loading--error .app-route-loading__logo-wrap::before {
+  animation: none;
+}
+
 .app-route-loading__surface {
   display: flex;
   width: min(100%, 320px);
@@ -7055,7 +7092,7 @@ html[data-theme="light"] .roles-matrix-panel__actions {
 html[data-theme="light"] .operations-hero{background:linear-gradient(135deg,#e8f7fa,#eef4ff)}
 html[data-theme="light"] .operation-grid input,html[data-theme="light"] .operation-grid select,html[data-theme="light"] .operation-grid textarea,html[data-theme="light"] .smart-select__control,html[data-theme="light"] .smart-select__menu input,html[data-theme="light"] .financial-item input,html[data-theme="light"] .financial-item select{background:#fff}
 @media(max-width:900px){.operation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.operation-row{grid-template-columns:42px 75px 1fr auto}.operation-row time{display:none}}
-@media(max-width:767px){.operations-hero{align-items:flex-start;flex-direction:column;padding:20px}.operations-hero h2{font-size:22px}.operation-segments{width:100%;overflow-x:auto}.operation-segments button{flex:1;min-width:90px}.operation-card,.operation-filters,.operations-day{padding:15px}.operation-grid{grid-template-columns:1fr}.operation-grid .wide{grid-column:auto}.operation-row{grid-template-columns:38px 68px 1fr;padding:14px 0}.operation-row>button{grid-column:2/-1}.operation-drawer>section{width:100vw}.detail-section dl{grid-template-columns:1fr}.financial-item{grid-template-columns:1fr 42px}.financial-item input,.financial-item select{grid-column:1}.financial-item button{grid-column:2;grid-row:1}.operation-actions{bottom:calc(var(--mobile-bottom-nav-height) + var(--safe-area-bottom) + 6px)}.smart-select__menu{position:fixed;inset:15% 12px auto;max-height:65dvh}.review-drawer footer button{flex:1}.review-totals{align-items:stretch;flex-direction:column}}
+@media(max-width:767px){.operations-hero{align-items:flex-start;flex-direction:column;padding:20px}.operations-hero h2{font-size:22px}.operation-segments{width:100%;overflow-x:auto}.operation-segments button{flex:1;min-width:90px}.operation-card,.operation-filters,.operations-day{padding:15px}.operation-grid{grid-template-columns:1fr}.operation-grid .wide{grid-column:auto}.operation-row{grid-template-columns:38px 68px 1fr;padding:14px 0}.operation-row>button{grid-column:2/-1}.operation-drawer>section{width:100vw}.detail-section dl{grid-template-columns:1fr}.financial-item{grid-template-columns:1fr 42px}.financial-item input,.financial-item select{grid-column:1}.financial-item button{grid-column:2;grid-row:1}.operation-actions{bottom:calc(var(--mobile-bottom-nav-height) + var(--safe-area-bottom) + 6px)}.review-drawer footer button{flex:1}.review-totals{align-items:stretch;flex-direction:column}}
 .operations-day h3{margin:0;color:var(--app-text)}.operations-day header span{color:var(--app-text-muted)}
 .operation-timeline{display:grid}.operation-row{display:grid;grid-template-columns:48px 90px minmax(180px,1fr) 80px auto;align-items:center;gap:12px;padding:16px 5px;border-bottom:1px solid var(--app-border)}.operation-row:last-child{border:0}.operation-row>b{color:var(--app-accent)}.operation-row div{display:grid;gap:4px}.operation-row strong{color:var(--app-text)}.operation-row small,.operation-row time{color:var(--app-text-muted)}.operation-row button,.review-table button{padding:8px 13px;border:1px solid rgba(72,198,217,.3);border-radius:9px;background:rgba(72,198,217,.09);color:var(--app-accent)}
 .operation-type{padding:5px 9px;border-radius:999px;background:rgba(37,99,235,.14);color:#93c5fd;text-align:center;font-size:12px}.operation-type.lithotripsy{color:#67e8f9}.operation-type.contract{color:#d8b4fe}
@@ -11858,12 +11895,6 @@ html[data-theme="light"] .work-form-builder>aside,html[data-theme="light"] .work
  .operations-list-filters.responsive-default,.operations-toggle-desktop{display:none}
  .operations-toggle-mobile{display:inline-block}
  .operations-list-filters .operation-grid{grid-template-columns:1fr}
- .operations-list-row{display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:20px 0}
- .operations-row-heading{justify-content:space-between}
- .operations-row-details{display:flex;flex-wrap:wrap;gap:6px 14px}
- .operations-row-actions{display:flex}.operations-row-actions>*{flex:1;min-height:46px}
- .operations-row-invoice{justify-items:start}
- .operations-page .operation-segments{width:100%;box-sizing:border-box}.operations-page .operation-segments button{min-width:0;padding-inline:8px}
 }
 
 /* Operations rows only: preserve mobile cards, separate metadata at wider widths. */
@@ -11888,7 +11919,7 @@ html[data-theme="light"] .work-form-builder>aside,html[data-theme="light"] .work
     line-height: 1.55;
   }
 
-  .operations-row-heading { gap: 12px; }
+  .operations-row-heading { gap: 12px; order: -1; }
   .operations-row-heading > b,
   .operations-row-heading > time {
     font-size: 14px;
@@ -11983,3 +12014,256 @@ html[data-theme="light"] .work-form-builder>aside,html[data-theme="light"] .work
 .bottom-pagination select{max-width:100%}
 .bottom-pagination small{color:var(--app-text-muted)}
 @media(max-width:767px){.compact-month-filter{width:100%}.financial-review-toolbar>.compact-month-filter{grid-column:1/-1}.bottom-pagination-pages{width:100%}.bottom-pagination label{justify-content:center;width:100%}}
+
+/* Operations List only. The shell already reserves navigation/safe-area space. */
+@media (max-width: 767px) {
+  .operations-page { gap: 12px; }
+
+  .operations-page > .operations-hero {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+  .operations-page > .operations-hero > div { min-width: 0; flex: 1; }
+  .operations-page > .operations-hero h2 { margin: 0; font-size: 22px; }
+  .operations-page > .operations-hero span,
+  .operations-page > .operations-hero p { display: none; }
+  .operations-page > .operations-hero > a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  .operations-page > .operation-segments {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    gap: 4px;
+    overflow: visible;
+  }
+  .operations-page > .operation-segments button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 7px 4px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+  }
+
+  .operations-page > .operations-filter-toggle { gap: 8px; }
+  .operations-page .compact-month-filter {
+    max-width: none;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(72px, .75fr) 44px;
+    gap: 4px;
+  }
+  .operations-page .compact-month-filter select,
+  .operations-page .compact-month-filter input { width: 100%; font-size: 16px; }
+  .operations-page > .operations-filter-toggle > button { width: 100%; }
+  .operations-page > .operations-list-filters { padding: 12px; gap: 12px; }
+  .operations-page > .operations-list-filters .operation-grid { gap: 12px; }
+  .operations-page > .operations-list-filters .operation-grid > * { min-width: 0; }
+  .operations-page > .operations-list-filters input,
+  .operations-page > .operations-list-filters select {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+  .operations-page > .operations-list-filters .smart-select__clear,
+  .operations-page > .operations-list-filters .smart-select__arrow {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .operations-page > .operations-list-filters > button { overflow-wrap: anywhere; }
+
+  .operations-page > .operations-day {
+    min-width: 0;
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: none;
+  }
+  .operations-page > .operations-day > header {
+    align-items: center;
+    gap: 4px 10px;
+    padding-bottom: 8px;
+  }
+  .operations-page > .operations-day > header h3 {
+    min-width: 0;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+  }
+  .operations-page > .operations-day > header > span {
+    color: var(--app-text-muted);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  /* One shared day panel, four paired RTL rows per operation. Desktop wrappers
+     remain intact; display:contents exposes their children to this mobile grid. */
+  .operations-page .operation-timeline { gap: 6px; }
+  .operations-page .operations-list-row {
+    grid-template-columns: minmax(0, 1fr) fit-content(45%);
+    grid-template-areas: "case heading" "doctor type" "hospital invoice" "actions actions";
+    align-items: center;
+    gap: 6px 8px;
+    padding: 10px 0;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .operations-page .operations-row-identity,
+  .operations-page .operations-row-details { display: contents; }
+  .operations-page .operations-list-row :is(strong, span, time, b) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .operations-page .operations-row-case {
+    grid-area: case;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .operations-page .operations-row-heading {
+    grid-area: heading;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .operations-page .operations-row-heading > b {
+    padding: 2px 4px;
+    unicode-bidi: isolate;
+  }
+  .operations-page .operations-row-type {
+    grid-area: type;
+    justify-self: end;
+    padding: 2px 6px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--app-accent) 12%, var(--app-surface));
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .operations-page .operations-row-doctor { grid-area: doctor; }
+  .operations-page .operations-row-hospital { grid-area: hospital; }
+  .operations-page .operations-row-field { min-width: 0; }
+  /* Keep metadata labels accessible without spending a column on each label. */
+  .operations-page .operations-row-label {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .operations-page .operations-row-value { color: var(--app-text); }
+  .operations-page .operations-row-invoice {
+    grid-area: invoice;
+    justify-items: end;
+    gap: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .operations-page .operations-row-invoice button {
+    justify-self: end;
+    min-width: 44px;
+    max-width: 100%;
+    padding: 4px 8px;
+    overflow-wrap: anywhere;
+  }
+  .operations-page .operations-row-invoice:empty { display: none; }
+  .operations-page .operations-list-row:has(> .operations-row-invoice:empty) .operations-row-hospital {
+    grid-column: 1 / -1;
+  }
+  .operations-page .operations-invoice-complete,
+  .operations-page .operations-invoice-pending { color: var(--app-text); }
+  .operations-page .operations-row-actions { grid-area: actions; }
+  .operations-page .operations-row-actions > * {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 6px 10px;
+    font-size: 14px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .operations-page .operations-row-actions > button:first-child {
+    border-color: var(--app-accent);
+    background: color-mix(in srgb, var(--app-accent) 18%, var(--app-surface));
+    color: var(--app-text);
+  }
+  .operations-page > .operations-state { padding: 24px 12px; overflow-wrap: anywhere; }
+  .operations-page > .bottom-pagination { gap: 10px; }
+  .operations-page > .bottom-pagination > label { flex-wrap: wrap; }
+}
+
+/* Native field-relative movement; JavaScript only manages collision space. */
+.smart-select[data-open="true"] { z-index: 80; }
+.smart-select__anchor { position: relative; width: 100%; min-width: 0; }
+.smart-select__menu--anchored {
+  max-height: 240px;
+  min-width: 0;
+  color: var(--app-text);
+  overscroll-behavior: contain;
+}
+.smart-select__menu--anchored[data-placement="above"] {
+  inset-block-start: auto;
+  inset-block-end: calc(100% + 6px);
+}
+.smart-select__menu--anchored .smart-select__option > button:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.smart-select__menu--anchored .smart-select__add { overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .smart-select__menu--anchored .smart-select__edit,
+  .smart-select__menu--anchored .smart-select__archive {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+  .smart-select__input { font-size: 16px; }
+
+  .operation-form { gap: 12px; min-width: 0; }
+  .operation-form > .operations-hero { flex-direction: row; flex-wrap: wrap; padding: 12px; gap: 6px 10px; border-radius: 14px; box-shadow: none; }
+  .operation-form > .operations-hero h2 { margin-block: 2px; font-size: 21px; }
+  .operation-form > .operations-hero p { font-size: 13px; line-height: 1.6; }
+  .operation-form .dynamic-work-form { gap: 12px; }
+  .operation-form .operation-card { padding: 12px; box-shadow: none; }
+  .operation-form .dynamic-section-header { margin-bottom: 8px; }
+  .operation-form .dynamic-section-header h3 { font-size: 16px; }
+  .operation-form .dynamic-section-header p { margin-top: 4px; }
+  .operation-form .operation-grid { gap: 10px; }
+  .operation-form .dynamic-work-form .operation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .operation-form .dynamic-work-form .operation-grid > .dynamic-field { grid-column: 1 / -1; }
+  .operation-form .dynamic-work-form .operation-grid > .dynamic-field[data-date-time-pair="true"] { grid-column: auto; }
+  .operation-form .operation-grid input:not([type="radio"]):not([type="checkbox"]),
+  .operation-form .operation-grid select { width: 100%; max-width: 100%; min-height: 46px; }
+  .operation-form .smart-select__control { flex-wrap: wrap; }
+  .operation-form .smart-select__chips { flex-basis: 100%; }
+  .operation-form .smart-select__chips:empty { display: none; }
+  .operation-form .smart-select__chip { max-width: 100%; overflow-wrap: anywhere; }
+  .operation-form .dynamic-field { gap: 5px; }
+  .operation-form .dynamic-field__label > span { flex-wrap: wrap; gap: 5px; font-size: 14px; }
+  .operation-form .dynamic-field--pricing-session,
+  .operation-form .dynamic-field--pricing-procedures { padding: 8px; }
+  .operation-form .dynamic-field__pricing-help { font-size: 12px; line-height: 1.5; }
+  .operation-form input, .operation-form select, .operation-form textarea { min-width: 0; font-size: 16px; }
+  .operation-form .operation-segments { width: 100%; }
+  .operation-form .operation-segments button { min-width: 0; min-height: 44px; }
+  .operation-form .operation-actions { position: static; padding: 10px; flex-wrap: wrap; gap: 8px; }
+  .operation-form .operation-actions button { flex: 1 1 80px; min-height: 44px; }
+}
