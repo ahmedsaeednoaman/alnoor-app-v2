@@ -320,6 +320,9 @@ export const operations = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     type: operationTypeEnum("type").notNull(),
     status: operationStatusEnum("status").default("recorded").notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    archivedByUserId: userReference("archived_by_user_id"),
+    archiveReason: text("archive_reason"),
     operationDate: date("operation_date", { mode: "string" }).notNull(),
     dailySequence: integer("daily_sequence").notNull(),
     operationTime: varchar("operation_time", { length: 5 }).notNull(),
@@ -381,6 +384,8 @@ export const operations = pgTable(
     index("operations_doctor_idx").on(table.doctorId),
     index("operations_hospital_idx").on(table.hospitalId),
     index("operations_type_status_idx").on(table.type, table.status),
+    index("operations_archived_at_idx").on(table.archivedAt),
+    check("operations_archive_metadata_valid", sql`(${table.archivedAt} is null and ${table.archivedByUserId} is null and ${table.archiveReason} is null) or (${table.archivedAt} is not null and ${table.archivedByUserId} is not null)`),
     index("operations_created_by_idx").on(table.createdByUserId),
     index("operations_form_template_idx").on(table.formTemplateId),
     index("operations_lithotripsy_session_idx").on(table.lithotripsySessionId),
@@ -1173,3 +1178,16 @@ export const doctorSupplyIssueItems = pgTable(
     ),
   ],
 );
+
+// Small operation-specific history; archive/restore only append events.
+export const operationArchiveEvents = pgTable("operation_archive_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  operationId: uuid("operation_id").notNull().references(() => operations.id, { onDelete: "restrict", onUpdate: "cascade" }),
+  actorUserId: userReference("actor_user_id").notNull(),
+  action: varchar("action", { length: 16, enum: ["archive", "restore"] }).notNull(),
+  reason: text("reason"),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [
+  index("operation_archive_events_operation_time_idx").on(table.operationId, table.occurredAt),
+  check("operation_archive_events_action_valid", sql`${table.action} in ('archive','restore')`),
+]);

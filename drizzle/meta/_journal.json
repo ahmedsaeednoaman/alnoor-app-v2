@@ -239,6 +239,13 @@
       "when": 1788742811454,
       "tag": "0035_push_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790536068101,
+      "tag": "0036_operation_archive",
+      "breakpoints": true
     }
   ]
 }

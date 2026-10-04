@@ -1,8 +1,10 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOperationDetailsRequest } from "@/lib/operations/use-operation-details-request";
 import { useDialogScrollLock } from "@/components/settings/users/use-dialog-scroll-lock";
+import { OperationManagementActions, type OperationManagementAction } from "./operation-management-actions";
 import { WorkFormRenderer } from "./work-form-renderer";
 import {
   validateWorkFormClient,
@@ -35,6 +37,7 @@ type Details = {
     operationDate: string;
     operationTime: string;
     status: string;
+    archivedAt?: string | null;
   };
 
   template: {
@@ -51,6 +54,7 @@ type Details = {
 
   canEdit: boolean;
   canCancel?: boolean;
+  canArchive?: boolean;
   canPrint?: boolean;
   editExpiresAt: string | null;
 
@@ -411,10 +415,12 @@ export function OperationDetails({
   operationId,
   onClose,
   onRefresh,
+  onManagementChanged,
 }: {
   operationId: string;
   onClose: () => void;
   onRefresh: () => void;
+  onManagementChanged?: (action: OperationManagementAction) => void;
 }) {
   useDialogScrollLock(true, false);
 
@@ -431,27 +437,16 @@ export function OperationDetails({
   >({});
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
+  const { read, ready } = useOperationDetailsRequest<Details>(operationId);
+  const loadVersion = useRef(0);
+  const load = useCallback(async (force = false) => {
+    const version = ++loadVersion.current;
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(
-        `/api/v1/operations/${operationId}`,
-        {
-          cache: "no-store",
-        },
-      );
-
-      const body = await response.json();
-
-      if (!response.ok) {
-        setError(
-          body.error?.message ??
-            "تعذر تحميل تفاصيل العملية.",
-        );
-        return;
-      }
+      const body = await read(force);
+      if (version !== loadVersion.current) return;
 
       setData(body);
 
@@ -459,18 +454,19 @@ export function OperationDetails({
         setValues(body.form.values);
         setInitial(JSON.stringify(body.form.values));
       }
-    } catch {
-      setError(
-        "تعذر الاتصال بالخادم أثناء تحميل تفاصيل العملية.",
-      );
+    } catch (reason) {
+      if (version !== loadVersion.current) return;
+      setError(reason instanceof Error ? reason.message : "تعذر تحميل تفاصيل العملية.");
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
-  }, [operationId]);
+  }, [read]);
 
+  const invalidateLoad = useCallback(() => { loadVersion.current++; }, []);
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (ready) void load();
+    return invalidateLoad;
+  }, [load, ready, invalidateLoad]);
 
   const dirty = useMemo(
     () =>
@@ -572,7 +568,7 @@ export function OperationDetails({
         return;
       }
 
-      await load();
+      await load(true);
       setMode("details");
       onRefresh();
     } catch {
@@ -582,38 +578,6 @@ export function OperationDetails({
     } finally {
       setSaving(false);
     }
-  }
-
-  async function cancelOperation() {
-    const reason = window.prompt("سبب إلغاء العملية");
-
-    if (!reason?.trim()) return;
-
-    const response = await fetch(
-      `/api/v1/operations/${operationId}/cancel`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          reason: reason.trim(),
-        }),
-      },
-    );
-
-    if (response.ok) {
-      onClose();
-      onRefresh();
-      return;
-    }
-
-    const body = await response.json();
-
-    setError(
-      body.error?.message ??
-        "تعذر إلغاء العملية.",
-    );
   }
 
   return (
@@ -834,17 +798,8 @@ export function OperationDetails({
                   </small>
                 )}
 
-                {data?.canCancel && (
-                  <button
-                    type="button"
-                    className="op-action-button op-action-button--danger"
-                    onClick={() =>
-                      void cancelOperation()
-                    }
-                  >
-                    إلغاء العملية
-                  </button>
-                )}
+                {data && <OperationManagementActions id={operationId} archived={Boolean(data.operation.archivedAt)} status={data.operation.status} canArchive={Boolean(data.canArchive)} canCancel={Boolean(data.canCancel)} onError={setError} onChanged={action=>{if(onManagementChanged)onManagementChanged(action);else onRefresh();onClose();}}/>}
+
               </div>
             </>
           )}

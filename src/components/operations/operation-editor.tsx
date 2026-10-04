@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useOperationDetailsRequest } from "@/lib/operations/use-operation-details-request";
 import { useRouter } from "next/navigation";
 import { WorkFormRenderer } from "./work-form-renderer";
 import {
@@ -20,22 +21,22 @@ export function OperationEditor({ id }: { id: string }) {
     [errors, setErrors] = useState<Record<string, string>>({}),
     [error, setError] = useState(""),
     [saving, setSaving] = useState(false);
+  const { read, ready } = useOperationDetailsRequest<Response>(id);
   useEffect(() => {
-    fetch(`/api/v1/operations/${id}`, { cache: "no-store" })
-      .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error?.message);
-        return body;
-      })
+    if (!ready) return;
+    let active = true;
+    void read()
       .then((body) => {
+        if (!active) return;
         setData(body);
         if (body.form) {
           setValues(body.form.values);
           setInitial(JSON.stringify(body.form.values));
         }
       })
-      .catch((reason) => setError(reason.message));
-  }, [id]);
+      .catch((reason) => { if (active) setError(reason.message); });
+    return () => { active = false; };
+  }, [read, ready]);
   const dirty = useMemo(
     () => JSON.stringify(values) !== initial,
     [initial, values],

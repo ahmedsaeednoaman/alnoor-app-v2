@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { SmartSelect } from "./smart-select";
+import { resolveInlineReferenceSource } from "@/lib/work-forms/inline-reference-sources";
 import { MoneyInput } from "./money-input";
 import type { BuilderField, BuilderTemplate } from "./work-form-types";
 import {
@@ -13,6 +14,7 @@ type Props = {
   template: BuilderTemplate;
   values: WorkFormValues;
   errors: Record<string, string>;
+  canCreateReferences?: boolean;
   canManageCatalogs: boolean;
   disabledKeys?: string[];
   onChange: (key: string, value: WorkFormValues[string]) => void;
@@ -27,6 +29,7 @@ function FieldControl({
   field,
   value,
   onChange,
+  canCreateReferences = false,
   canManageCatalogs,
   disabled,
   sessionOptions,
@@ -34,12 +37,14 @@ function FieldControl({
   field: BuilderField;
   value: WorkFormValues[string];
   onChange: (value: WorkFormValues[string]) => void;
+  canCreateReferences?: boolean;
   canManageCatalogs: boolean;
   disabled: boolean;
   sessionOptions: SessionOption[];
 }) {
   if (field.fieldType === "smart_single" || field.fieldType === "smart_multi") {
     const source = field.smartDropdownSource!;
+    const inlineSource = resolveInlineReferenceSource(source);
     return (
       <SmartSelect
         label=""
@@ -57,6 +62,8 @@ function FieldControl({
         }
         multiple={field.multiple}
         maxSelections={field.maxSelections}
+        canCreate={canCreateReferences && inlineSource !== null}
+        inlineCreateSource={inlineSource?.source}
         canManage={canManageCatalogs && source !== "users"}
         onChange={onChange}
       />
@@ -127,6 +134,7 @@ export function WorkFormRenderer({
   template,
   values,
   errors,
+  canCreateReferences = false,
   canManageCatalogs,
   disabledKeys = [],
   onChange,
@@ -193,6 +201,7 @@ export function WorkFormRenderer({
                       field={field}
                       value={values[field.stableKey] ?? null}
                       onChange={(value) => onChange(field.stableKey, value)}
+                      canCreateReferences={canCreateReferences}
                       canManageCatalogs={canManageCatalogs}
                       disabled={disabledKeys.includes(field.stableKey)}
                       sessionOptions={needsSessionOptions ? sessionOptions : []}

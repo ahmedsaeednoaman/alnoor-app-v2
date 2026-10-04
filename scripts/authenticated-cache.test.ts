@@ -12,6 +12,12 @@ async function main() {
   const ticket = auth.capture()!, key = authenticatedKey(ticket, "smart-options-v1", "/api/reference?a=1");
   const data = { value: [{ id: "one", name: "One" }], fetchedAt: 1000 };
   store.cache.set(key, { data }); assert.deepEqual(store.cache.get(key)?.data, data);
+  const templateKey = authenticatedKey(ticket, "published-template-v1", "/api/v1/work-forms/lithotripsy");
+  store.cache.set(templateKey, { data: { value: { id: "template", version: 1 }, fetchedAt: 1000 } });
+  await auth.revalidate();
+  assert.ok(auth.isCurrent(ticket), "same verified principal preserves generation and pending tickets");
+  assert.deepEqual(store.cache.get(key)?.data, data);
+  assert.ok(store.cache.get(templateKey)?.data, "same scope retains template cache too");
   assert.equal(store.cache.get(authenticatedKey(ticket, "smart-options-v1", "/api/reference?a=2")), undefined);
   assert.equal(store.cache.get(authenticatedKey(ticket, "published-template-v1", "/api/reference?a=1")), undefined);
   auth.invalidate(); assert.equal(store.cache.get(key), undefined); assert.equal([...store.cache.keys()].length, 0);

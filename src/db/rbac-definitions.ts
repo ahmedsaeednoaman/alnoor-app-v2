@@ -4,6 +4,7 @@ export type CanonicalRole = { code: string; name: string; description: string };
 export const permissionCatalog: readonly CanonicalPermission[] = [
   ["dashboard.view", "dashboard", "عرض الصفحة الرئيسية"],
   ["operations.view", "operations", "عرض العمليات"], ["operations.create", "operations", "إضافة شغل"],
+  ["operations.archive", "operations", "أرشفة واستعادة العمليات"],
   ["operations.edit", "operations", "تعديل العمليات"], ["operations.cancel", "operations", "إلغاء العمليات"],
   ["expenses.create", "expenses", "إضافة مصروف"], ["expenses.view", "expenses", "عرض المصروفات"], ["expenses.review", "expenses", "مراجعة المصروفات"],
   ["accounting.review", "accounting", "مراجعة الشغل"], ["accounting.finance.view", "accounting", "عرض القيم المالية"], ["accounting.finance.edit", "accounting", "تعديل القيم المالية"], ["accounting.review.layout.manage", "accounting", "إدارة إعداد جدول المراجعة"],

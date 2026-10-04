@@ -11,6 +11,7 @@ import { SmartSelect } from "@/components/operations/smart-select";
 import { FinancialTableBuilder } from "./financial-table-builder";
 import { LithotripsySimpleReviewEditor } from "./simple-lithotripsy-review-editor-v2";
 import { groupFinancialReview } from "@/lib/accounting/financial-review-grouping";
+import { startReviewEffect } from "@/lib/accounting/review-request-effect";
 type WorkType = "lithotripsy" | "endoscopy" | "contract";
 type Row = {
   id: string;
@@ -201,7 +202,9 @@ export function FinancialReviewWorkbench({
       if (!currentRequest()) return;
       if (!response.ok) throw new Error(body.error?.message ?? "تعذر تحميل المراجعات.");
       const correction = reviewPageCorrection(queryString, body.pagination);
-      if (correction) { window.history.replaceState(null, "", `?${correction}${window.location.hash}`); return; }
+      if (correction) {
+        window.history.replaceState(null, "", `?${correction}${window.location.hash}`); return;
+      }
       setRows(Array.isArray(body.operations) ? body.operations : []);
       setPagination(body.pagination);
       setRange({ from: body.filters.from || "", to: body.filters.to || "" });
@@ -213,16 +216,8 @@ export function FinancialReviewWorkbench({
       if (mountedRef.current && !signal?.aborted && requestGeneration === requestGenerationRef.current) setLoading(false);
     }
   }, [queryString, setLoading, setError, setRows, setPagination, setRange]);
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, [load]);
-  useEffect(() => {
-    const controller = new AbortController();
-    void loadLayout(controller.signal);
-    return () => controller.abort();
-  }, [loadLayout]);
+  useEffect(() => startReviewEffect(load), [load]);
+  useEffect(() => startReviewEffect(loadLayout), [loadLayout]);
   return (
     <div className="review-page">
       <header className="operations-hero">
@@ -882,7 +877,7 @@ function ReviewEditor({
                       <option value="financial">مالي</option>
                       <option value="note">ملاحظة</option>
                     </select>
-                    {item.sourceType === "manual" && item.kind === "financial" ? <SmartSelect label="" type="financial-items" optionsEndpoint="/api/v1/catalogs/financial-items?active=true&limit=50" value={item.description} returnLabel canManage={canEdit} onChange={(value) => updateItem(index, { description: String(value) })} /> : <input value={item.description} disabled={!canEdit} placeholder="اسم الملاحظة" onChange={(e) => updateItem(index, { description: e.target.value })} />}
+                    {item.sourceType === "manual" && item.kind === "financial" ? <SmartSelect label="" type="financial-items" optionsEndpoint="/api/v1/catalogs/financial-items?active=true&limit=50" value={item.description} returnLabel canCreate={canEdit} canManage={canEdit} onChange={(value) => updateItem(index, { description: String(value) })} /> : <input value={item.description} disabled={!canEdit} placeholder="اسم الملاحظة" onChange={(e) => updateItem(index, { description: e.target.value })} />}
                     <input
                       type="number"
                       min="0"

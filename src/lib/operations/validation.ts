@@ -128,6 +128,7 @@ const legacyOperationFilterFields = {
 export const operationFilterSchema = z
   .object({
     ...legacyOperationFilterFields,
+    archive: z.enum(["active", "archived", "all"]).optional(),
     invoiceStatus: z.enum(["all", "pending", "completed", "latest"]).optional(),
     period: z.enum(["week", "month", "year", "custom"]).optional(),
     year: z.coerce.number().int().min(2000).max(2100).optional(),

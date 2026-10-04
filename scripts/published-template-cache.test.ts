@@ -23,7 +23,7 @@ async function main() {
   const r = await cacheRuntime(); await r.activate();
   const Form = r.api.OperationForm as unknown as typeof OperationForm;
   const useTemplate = r.api.usePublishedTemplate as unknown as typeof usePublishedTemplate;
-  const form = r.mount(() => Form({ canManageCatalogs: true, canManageWorkForms: true }));
+  const form = r.mount(() => Form({ canCreateReferences: true, canManageCatalogs: true, canManageWorkForms: true }));
   await r.flush(); assert.equal(r.requests.length, 1);
   r.requests[0].resolve(Response.json({ template: template("lithotripsy") })); await r.flush();
   assert.equal(renderer(form.value)?.template.id, "lithotripsy-1");
@@ -79,7 +79,7 @@ async function main() {
   assert.equal(renderer(form.value)?.template.operationType, "endoscopy");
   assert.equal(r.requests.length, beforeTypes + 2, "late response can warm its own type cache");
   r.unmount(form);
-  const returning = r.mount(() => Form({ canManageCatalogs: false, canManageWorkForms: false })); await r.flush();
+  const returning = r.mount(() => Form({ canCreateReferences: true, canManageCatalogs: false, canManageWorkForms: false })); await r.flush();
   assert.equal(renderer(returning.value)?.template.id, "lithotripsy-3"); assert.equal(r.requests.length, beforeTypes + 2);
   assert.ok(r.requests.every(request => !request.url.includes("draft")), "no draft warming");
   r.dispose();

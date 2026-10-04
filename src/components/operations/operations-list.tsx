@@ -10,9 +10,14 @@ import type { TaxInvoice } from "@/lib/operations/tax-invoice";
 import { OperationTaxInvoiceModal } from "./operation-tax-invoice-modal";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OperationDetails as DynamicOperationDetails } from "./operation-details";
+import { OperationManagementActions, type OperationManagementAction } from "./operation-management-actions";
 import { SmartSelect } from "./smart-select";
 
-export type OperationalReviewItem={id:string;type:"lithotripsy"|"endoscopy"|"contract";status:string;operationDate:string;dailySequence:number;operationTime:string;caseName:string|null;doctorId:string|null;doctorName:string|null;hospitalId:string|null;hospitalName:string|null;contractEntityId:string|null;contractEntityName:string|null;referenceNumber:string|null;side:"right"|"left"|"bilateral"|null;sessionCount:number|null;procedures:string[];equipment:string[];createdByName:string|null;hasNotes:boolean;employeeEditWindow:boolean;taxInvoice?:TaxInvoice|null};
+export type OperationalReviewItem={id:string;type:"lithotripsy"|"endoscopy"|"contract";status:string;archivedAt?:string|null;operationDate:string;dailySequence:number;operationTime:string;caseName:string|null;doctorId:string|null;doctorName:string|null;hospitalId:string|null;hospitalName:string|null;contractEntityId:string|null;contractEntityName:string|null;referenceNumber:string|null;side:"right"|"left"|"bilateral"|null;sessionCount:number|null;procedures:string[];equipment:string[];createdByName:string|null;hasNotes:boolean;employeeEditWindow:boolean;taxInvoice?:TaxInvoice|null};
+// Apply a confirmed mutation before the authoritative list refresh completes.
+export function applyOperationManagementResult<T extends {id:string;status:string;archivedAt?:string|null}>(items:T[], id:string, action:OperationManagementAction, archive:string):T[]{
+  return archive!=="all"?items.filter(item=>item.id!==id):items.map(item=>item.id!==id?item:{...item,...(action==="cancel"?{status:"cancelled"}:{archivedAt:action==="restore"?null:new Date().toISOString()})});
+}
 type ReviewGroup={id:string;label:string;secondaryLabel:string|null;firstTime:string;operations:OperationalReviewItem[]};
 export type OperationalReviewTypeGroup={type:OperationalReviewItem["type"];groups:ReviewGroup[]};
 export type OperationalReviewDay={date:string;count:number;types:OperationalReviewTypeGroup[]};
@@ -26,8 +31,9 @@ export function groupOperationalReview(items:OperationalReviewItem[]):Operationa
 const dayFormatter=new Intl.DateTimeFormat("ar-EG",{weekday:"long",day:"numeric",month:"long",year:"numeric",timeZone:"Africa/Cairo"});
 const countLabel=(count:number)=>count===1?"حالة واحدة":count===2?"حالتان":`${count} حالات`;
 
-export function OperationsList({canEditAll,isEmployee,canCreateInvoice=false,defaultMonth}:{canEditAll:boolean;isEmployee:boolean;canCreateInvoice?:boolean;defaultMonth:CalendarMonth}){
+export function OperationsList({canEditAll,isEmployee,canCreateInvoice=false,defaultMonth,canArchive=false,canCancel=false}:{canArchive?:boolean;canCancel?:boolean;canEditAll:boolean;isEmployee:boolean;canCreateInvoice?:boolean;defaultMonth:CalendarMonth}){
  const params=useSearchParams(), queryString=params.toString();
+ const archive=params.get("archive")||"active";
  const type=params.get("type")||"", doctor=params.get("doctorId")||"", hospital=params.get("hospitalId")||"", search=params.get("search")||"", invoiceStatus=params.get("invoiceStatus")||"all";
  // A draft belongs to the URL where typing began; navigation wins over pending input.
  const [searchDraft,setSearchDraft]=useState<{query:string;value:string}|null>(null);
@@ -73,6 +79,11 @@ export function OperationsList({canEditAll,isEmployee,canCreateInvoice=false,def
  const navigateMonth=(month:CalendarMonth)=>{if(isSupportedMonth(month)){setDateDraft(null);window.history.replaceState(null,"",`?${operationsMonthQuery(window.location.search,month)}${window.location.hash}`)}};
  const update=(changes:Record<string,string>)=>window.history.replaceState(null,"",`?${canonicalOperationsQuery(updateOperationsQuery(window.location.search,changes),defaultMonth)}`);
  const load=useCallback(async(signal?:AbortSignal)=>{const version=++requestVersion.current;setLoading(true);try{const response=await fetch(`/api/v1/operations?${queryString}`,{signal});const data=await response.json();if(signal?.aborted||version!==requestVersion.current)return;if(!response.ok)throw new Error(data.error?.message||"تعذر تحميل العمليات");if(new URLSearchParams(window.location.search).toString()!==queryString)return;const correction=operationsPageCorrection(queryString,data.pagination);if(correction){window.history.replaceState(null,"",`?${correction}${window.location.hash}`);return}setItems(data.operations);setPagination(data.pagination);setRange({from:data.filters.from||"",to:data.filters.to||""});setError("")}catch(error){if(!signal?.aborted&&version===requestVersion.current)setError(error instanceof Error?error.message:"تعذر تحميل العمليات")}finally{if(!signal?.aborted&&version===requestVersion.current)setLoading(false)}},[queryString,setItems,setPagination,setRange,setError,setLoading]);
+ const managementChanged=(id:string,action:OperationManagementAction)=>{
+   requestVersion.current++; // Reject a list GET started before this mutation.
+   setItems(current=>applyOperationManagementResult(current,id,action,archive));
+   void load();
+ };
  useEffect(()=>{const controller=new AbortController();void load(controller.signal);return()=>controller.abort()},[load]);
  useEffect(()=>{const id=window.location.hash.slice(1);if(id)setDetailId(id)},[]);
  const days=useMemo(()=>{const result=new Map<string,OperationalReviewItem[]>();for(const item of items)result.set(item.operationDate,[...(result.get(item.operationDate)??[]),item]);return[...result.entries()].sort(([a],[b])=>b.localeCompare(a)).map(([date,operations])=>({date,operations:invoiceStatus==="latest"?operations:operations.sort((a,b)=>b.operationTime.localeCompare(a.operationTime)||b.dailySequence-a.dailySequence)}))},[items,invoiceStatus]);
@@ -86,6 +97,7 @@ export function OperationsList({canEditAll,isEmployee,canCreateInvoice=false,def
  const activeCount=[search.trim(),doctor,hospital,type,invoiceStatus!=="all",Boolean(params.get("from")||params.get("date")||params.get("period")&&params.get("period")!=="month"||isMonthScope&&(selectedMonth.year!==defaultMonth.year||selectedMonth.month!==defaultMonth.month))].filter(Boolean).length;
  const toggleFilters=()=>setShowFilters(current=>!(current??window.matchMedia("(min-width: 768px)").matches));
  return <div className="operations-page" dir="rtl"><header className="operations-hero"><div><span>السجل التشغيلي</span><h2>العمليات</h2><p>استعراض الحالات المسجلة وفتح تفاصيل كل حالة.</p></div><Link href="/operations/new">+ إضافة شغل</Link></header>
+ {canArchive&&<label>عرض السجل<select aria-label="عرض السجل" value={archive} onChange={event=>update({archive:event.target.value})}><option value="active">النشطة</option><option value="archived">المؤرشفة</option><option value="all">الكل (بما فيها الملغاة)</option></select></label>}
  <div className="operation-segments" role="tablist" aria-label="نوع العمليات">{[["","الكل"],["lithotripsy","التفتيت"],["endoscopy","المناظير"],["contract","التعاقد"]].map(([value,label])=><button role="tab" aria-selected={type===value} className={type===value?"active":""} onClick={()=>update({type:value})} key={value}>{label}</button>)}</div>
  <div className="operations-filter-toggle"><CompactMonthFilter year={selectedMonth.year} month={selectedMonth.month} monthlyScope={params.get("period")==="month"} onMonthChange={navigateMonth}/>{showFilters===null?<><button className="operations-toggle-desktop" aria-expanded="true" aria-controls="operations-filter-panel" onClick={toggleFilters}>⌕ تصفية الفلاتر{activeCount>0?` (${activeCount})`:""}</button><button className="operations-toggle-mobile" aria-expanded="false" aria-controls="operations-filter-panel" onClick={toggleFilters}>⌕ تصفية الفلاتر{activeCount>0?` (${activeCount})`:""}</button></>:<button aria-expanded={showFilters} aria-controls="operations-filter-panel" onClick={toggleFilters}>⌕ تصفية الفلاتر{activeCount>0?` (${activeCount})`:""}</button>}</div>
  <section id="operations-filter-panel" className={`operation-filters operations-list-filters ${showFilters===null?"responsive-default":showFilters?"is-open":"is-closed"}`}>
@@ -96,14 +108,14 @@ export function OperationsList({canEditAll,isEmployee,canCreateInvoice=false,def
  {error?<p className="operations-state error" role="alert">{error}</p>:!items.length&&!loading?<p className="operations-state">{type?typeEmpty[type as keyof typeof typeEmpty]:"لا توجد عمليات في الفترة المحددة"}</p>:days.map(day=><section className="operations-day" key={day.date}><header><h3>{dayFormatter.format(new Date(`${day.date}T12:00:00Z`))}</h3><span>{countLabel(day.operations.length)}</span></header><div className="operation-timeline">{day.operations.map(operation=><article className="operations-list-row" key={operation.id}>
  <div className="operations-row-identity"><strong className="operations-row-case">{operation.caseName?.trim()||"بدون اسم حالة"}</strong><div className="operations-row-heading"><b>#{operation.dailySequence}</b><time>{operation.operationTime}</time></div></div>
  <div className="operations-row-details">
-   <span className="operations-row-type">{typeLabels[operation.type]}</span>
+   <span className="operations-row-type">{typeLabels[operation.type]}{operation.archivedAt?" · مؤرشفة":""}{operation.status==="cancelled"?" · ملغاة":""}</span>
    <span className="operations-row-field operations-row-doctor"><small className="operations-row-label">الطبيب</small><span className="operations-row-value">{operation.doctorName}</span></span>
    <span className="operations-row-field operations-row-hospital"><small className="operations-row-label">المستشفى</small><span className="operations-row-value">{operation.hospitalName}</span></span>
  </div>
  <div className="operations-row-invoice">{operation.taxInvoice?<span className="operations-invoice-complete">✓ {operation.taxInvoice.registryLabel} <bdi>{operation.taxInvoice.invoiceNumber}</bdi></span>:<>{operation.type==="contract"&&<span className="operations-invoice-pending">● لم تصدر فاتورة</span>}{canCreateInvoice&&<button type="button" onClick={()=>setInvoiceOperation(operation)}>{operation.type==="contract"?"إصدار فاتورة":"+ فاتورة"}</button>}</>}</div>
- <div className="operations-row-actions"><button type="button" onClick={()=>setDetailId(operation.id)}>فتح الحالة</button>{(isEmployee?operation.employeeEditWindow:canEditAll)&&<Link href={`/operations/${operation.id}/edit`}>تعديل</Link>}</div>
+ <div className="operations-row-actions"><button type="button" onClick={()=>setDetailId(operation.id)}>فتح الحالة</button>{!operation.archivedAt&&operation.status!=="cancelled"&&(isEmployee?operation.employeeEditWindow:canEditAll)&&<Link href={`/operations/${operation.id}/edit`}>تعديل</Link>}<OperationManagementActions id={operation.id} archived={Boolean(operation.archivedAt)} status={operation.status} canArchive={canArchive} canCancel={canCancel} onError={setError} onChanged={action=>managementChanged(operation.id,action)}/></div>
  </article>)}</div></section>)}
  <BottomPagination page={Number(params.get("page")) || 1} pageSize={monthlyPageSize(params.get("pageSize"))} total={pagination.total} totalPages={pagination.totalPages} hasNext={pagination.hasNext} hasPrevious={pagination.hasPrevious} loading={loading} monthlyScope={params.get("period")==="month"} onPageChange={page=>update({page:String(page)})} onPageSizeChange={size=>update({pageSize:String(size)})}/>
  {invoiceOperation&&<OperationTaxInvoiceModal operation={invoiceOperation} onClose={()=>setInvoiceOperation(null)} onSaved={invoice=>{setItems(current=>current.map(item=>item.id===invoiceOperation.id?{...item,taxInvoice:invoice}:item));setInvoiceOperation(null);void load()}}/>}
- {detailId&&<DynamicOperationDetails operationId={detailId} onClose={()=>{setDetailId(null);history.replaceState(null,"",location.pathname+location.search)}} onRefresh={()=>void load()}/>}</div>
+ {detailId&&<DynamicOperationDetails operationId={detailId} onClose={()=>{setDetailId(null);history.replaceState(null,"",location.pathname+location.search)}} onRefresh={()=>void load()} onManagementChanged={action=>{if(detailId)managementChanged(detailId,action)}}/>}</div>
 }

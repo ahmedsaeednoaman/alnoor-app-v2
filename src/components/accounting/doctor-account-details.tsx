@@ -922,6 +922,7 @@ export function DoctorAccountDetails({
                               type={catalog.type}
                               optionsEndpoint={catalog.endpoint}
                               value={item.sourceReferenceId}
+                              canCreate={canManageCatalogs}
                               canManage={canManageCatalogs}
                               onChange={(value) =>
                                 updateSupplyItem(item.id, {

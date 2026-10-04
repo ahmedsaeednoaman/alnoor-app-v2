@@ -13,7 +13,9 @@ export async function listOperations(
   user: AuthUser,
 ) {
   const resolved = resolveOperationPagination(filters);
-  const conditions = ["o.status <> 'cancelled'"];
+  const archive = filters.archive ?? "active";
+  if (archive !== "active" && !user.permissions.includes("operations.archive")) throw new OperationDomainError(403, "FORBIDDEN", "ليس لديك صلاحية عرض الأرشيف.");
+  const conditions = archive === "active" ? ["o.status <> 'cancelled'", "o.archived_at IS NULL"] : archive === "archived" ? ["o.archived_at IS NOT NULL"] : ["TRUE"];
   const params: Array<string | number | boolean> = [];
   const add = (sql: string, value: string | number | boolean) => {
     params.push(value);
@@ -51,7 +53,7 @@ export async function listOperations(
   const pagingSql = resolved.pageSize === "all" ? "" : `LIMIT $${rowParams.length - 2} OFFSET $${rowParams.length - 1}`;
   const rows = await postgresClient.unsafe<Row[]>(
     `
-    SELECT CASE WHEN ti.id IS NULL THEN NULL ELSE json_build_object('id',ti.id,'registry',ti.tax_registry,'registryLabel',CASE ti.tax_registry WHEN 'alnoor' THEN 'النور' ELSE 'الكوثر' END,'invoiceNumber',ti.invoice_number,'createdAt',ti.created_at) END AS "taxInvoice", o.id, o.type, o.status, o.operation_date AS "operationDate", o.daily_sequence AS "dailySequence",
+    SELECT CASE WHEN ti.id IS NULL THEN NULL ELSE json_build_object('id',ti.id,'registry',ti.tax_registry,'registryLabel',CASE ti.tax_registry WHEN 'alnoor' THEN 'النور' ELSE 'الكوثر' END,'invoiceNumber',ti.invoice_number,'createdAt',ti.created_at) END AS "taxInvoice", o.id, o.type, o.status, o.archived_at AS "archivedAt", o.operation_date AS "operationDate", o.daily_sequence AS "dailySequence",
            o.operation_time AS "operationTime", o.case_name AS "caseName", o.created_at AS "createdAt",
            o.doctor_id AS "doctorId", d.name AS "doctorName",
            o.hospital_id AS "hospitalId", h.name AS "hospitalName",
@@ -213,13 +215,13 @@ export async function cancelOperation(
   user: AuthUser,
 ) {
   const result = await postgresClient.unsafe<Row[]>(
-    `UPDATE operations SET status='cancelled',cancellation_reason=$2,cancelled_by_user_id=$3::uuid,cancelled_at=now(),updated_at=now() WHERE id=$1::uuid AND status<>'cancelled' AND NOT EXISTS(SELECT 1 FROM doctor_account_postings WHERE operation_id=$1::uuid AND reversed=false) RETURNING id`,
+    `UPDATE operations SET status='cancelled',cancellation_reason=$2,cancelled_by_user_id=$3::uuid,cancelled_at=now(),updated_at=now() WHERE id=$1::uuid AND status<>'cancelled' AND archived_at IS NULL AND NOT EXISTS(SELECT 1 FROM doctor_account_postings WHERE operation_id=$1::uuid AND reversed=false) RETURNING id`,
     [id, reason, user.id],
   );
   if (!result[0])
     throw new OperationDomainError(
       409,
       "CANCEL_NOT_ALLOWED",
-      "لا يمكن إلغاء العملية بعد ترحيلها أو أنها ملغاة بالفعل.",
+      "لا يمكن إلغاء العملية بعد ترحيلها أو أثناء أرشفتها أو أنها ملغاة بالفعل.",
     );
 }

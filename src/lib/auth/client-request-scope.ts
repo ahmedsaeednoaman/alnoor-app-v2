@@ -30,8 +30,12 @@ export function createRequestScopeController(
     publish({ status: "checking", scope: null, expiresAt: null });
   }
   async function revalidate() {
-    if (transitions.size || verification) return;
-    invalidate();
+    if (transitions.size) return;
+    const expired = snapshot.status === "active" && Date.parse(snapshot.expiresAt!) <= now();
+    if (verification && !expired) return;
+    // A background identity check is not an auth transition. Keep the last
+    // verified, unexpired generation usable until the server says otherwise.
+    if (snapshot.status !== "active" || expired) invalidate();
     const current = generation;
     const controller = new AbortController();
     verification = controller;
@@ -39,7 +43,7 @@ export function createRequestScopeController(
     const timeout = setTimeout(() => {
       controller.abort();
       if (current === generation) {
-        verification = null;
+        invalidate();
         publish({ status: "blocked", scope: null, expiresAt: null });
       }
     }, 8000);
@@ -48,16 +52,21 @@ export function createRequestScopeController(
       const result = await verify(controller.signal);
       if (controller.signal.aborted || current !== generation) return;
       if (!result || result.scope !== initial.scope) {
+        invalidate();
         publish({ status: "blocked", scope: null, expiresAt: null });
         onSessionChange(Boolean(result));
       } else if (Date.parse(result.expiresAt) <= now()) {
+        invalidate();
         publish({ status: "blocked", scope: null, expiresAt: null });
         onSessionChange(false);
       } else {
         publish({ status: "active", ...result });
       }
     } catch {
-      if (!controller.signal.aborted && current === generation) publish({ status: "blocked", scope: null, expiresAt: null });
+      if (!controller.signal.aborted && current === generation) {
+        invalidate();
+        publish({ status: "blocked", scope: null, expiresAt: null });
+      }
     } finally {
       clearTimeout(timeout);
       if (verification === controller) { verification = null; verificationTimeout = null; }
@@ -100,6 +109,27 @@ export function createRequestScopeController(
 const CHANNEL = "alnoor-auth-transition-v1";
 const STORAGE_KEY = "alnoor-auth-transition-signal";
 const LOCAL_EVENT = "alnoor-auth-transition";
+
+// Focus/visibility/pageshow often arrive together. Coalesce that event burst,
+// without treating blur, backgrounding or BFCache entry as logout.
+export function listenForScopeLifecycle(revalidate: () => Promise<void>) {
+  let frame: number | null = null;
+  const visible = () => {
+    if (document.visibilityState !== "visible" || frame !== null) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = null;
+      if (document.visibilityState === "visible") void revalidate();
+    });
+  };
+  for (const event of ["focus", "online", "pageshow"]) window.addEventListener(event, visible);
+  document.addEventListener("visibilitychange", visible);
+  visible();
+  return () => {
+    if (frame !== null) window.cancelAnimationFrame(frame);
+    for (const event of ["focus", "online", "pageshow"]) window.removeEventListener(event, visible);
+    document.removeEventListener("visibilitychange", visible);
+  };
+}
 function isTransition(value: unknown): value is AuthTransition {
   return typeof value === "object" && value !== null && "id" in value && typeof value.id === "string" &&
     value.id.length <= 80 && "phase" in value && (value.phase === "start" || value.phase === "settled");

@@ -21,5 +21,5 @@ export default async function Page({ searchParams }: {
   const canonical = canonicalOperationsQuery(query.toString(), defaultMonth);
   // Redirect before mounting the list: no initial API request with implicit scope.
   if (canonical !== query.toString()) redirect(`/operations?${canonical}`);
-  return <OperationsList defaultMonth={defaultMonth} canCreateInvoice={auth.user.permissions.includes("accounting.finance.edit")} canEditAll={auth.user.permissions.includes("operations.edit") && auth.user.role.code !== "employee"} isEmployee={auth.user.role.code === "employee"}/>;
+  return <OperationsList canArchive={auth.user.permissions.includes("operations.archive")} canCancel={auth.user.permissions.includes("operations.cancel")} defaultMonth={defaultMonth} canCreateInvoice={auth.user.permissions.includes("accounting.finance.edit")} canEditAll={auth.user.permissions.includes("operations.edit") && auth.user.role.code !== "employee"} isEmployee={auth.user.role.code === "employee"}/>;
 }

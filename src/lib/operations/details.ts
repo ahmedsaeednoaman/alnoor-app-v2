@@ -81,7 +81,7 @@ async function referenceLabel(
   return rows[0]?.name ?? "عنصر غير متاح";
 }
 function canEditOperation(operation: Row, user: AuthUser) {
-  if (operation.status === "cancelled") return false;
+  if (operation.status === "cancelled" || operation.archived_at) return false;
   if (!isEmployee(user) && user.permissions.includes("operations.edit"))
     return true;
   return (
@@ -136,7 +136,7 @@ export async function getDynamicOperationDetails(
     `SELECT o.*,d.name doctor_name,h.name hospital_name,ce.name contract_entity_name,a.name anesthesiologist_name,t.name technician_name,u.display_name created_by_name FROM operations o LEFT JOIN doctors d ON d.id=o.doctor_id LEFT JOIN hospitals h ON h.id=o.hospital_id LEFT JOIN contract_entities ce ON ce.id=o.contract_entity_id LEFT JOIN anesthesiologists a ON a.id=o.anesthesiologist_id LEFT JOIN technicians t ON t.id=o.technician_id JOIN users u ON u.id=o.created_by_user_id WHERE o.id=$1::uuid${employeeClause} LIMIT 1`,
     params,
   );
-  if (!operation)
+  if (!operation || (operation.archived_at && !user.permissions.includes("operations.archive")))
     throw new OperationDomainError(
       404,
       "OPERATION_NOT_FOUND",
@@ -152,6 +152,7 @@ export async function getDynamicOperationDetails(
         id: operation.id,
         type: operation.type,
         status: operation.status,
+        archivedAt: operation.archived_at ?? null,
         dailySequence: operation.daily_sequence,
         caseName: operation.case_name,
         operationDate: operation.operation_date,
@@ -185,6 +186,8 @@ export async function getDynamicOperationDetails(
       ],
       form: null,
       canEdit: false,
+      canCancel: operation.status !== "cancelled" && !operation.archived_at && user.permissions.includes("operations.cancel"),
+      canArchive: user.permissions.includes("operations.archive"),
       editExpiresAt: null,
       canPrint: user.permissions.includes("printing.use"),
       ...(includeFinance ? { financial: await finance(db, id) } : {}),
@@ -385,6 +388,7 @@ export async function getDynamicOperationDetails(
       id: operation.id,
       type: operation.type,
       status: operation.status,
+      archivedAt: operation.archived_at ?? null,
       dailySequence: operation.daily_sequence,
       caseName: operation.case_name,
       operationDate: operation.operation_date,
@@ -401,7 +405,8 @@ export async function getDynamicOperationDetails(
     sections,
     form,
     canEdit,
-    canCancel: user.permissions.includes("operations.cancel"),
+    canCancel: operation.status !== "cancelled" && !operation.archived_at && user.permissions.includes("operations.cancel"),
+    canArchive: user.permissions.includes("operations.archive"),
     canPrint: user.permissions.includes("printing.use"),
     editExpiresAt:
       isEmployee(user) && operation.created_by_user_id === user.id
@@ -449,7 +454,7 @@ export async function updateDynamicOperationInTransaction(
         Date.now() - 48 * 60 * 60 * 1000 &&
       String(operation.operation_date) >=
         new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
-  if ((!privileged && !ownRecent) || operation.status === "cancelled")
+  if ((!privileged && !ownRecent) || operation.status === "cancelled" || operation.archived_at)
     throw new OperationDomainError(
       403,
       "OPERATION_EDIT_WINDOW_CLOSED",

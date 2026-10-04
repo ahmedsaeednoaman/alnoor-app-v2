@@ -72,8 +72,14 @@ async function main() {
   race.controller.dispose();
 
   const focus = fixture(); await activate(focus); const beforeExpiry = focus.controller.capture()!;
+  const backgroundCheck = focus.controller.revalidate();
+  assert.ok(focus.controller.isCurrent(beforeExpiry), "unexpired identity stays active during background verification");
   focus.expire(); assert.equal(focus.controller.capture(), null); assert.equal(focus.controller.isCurrent(beforeExpiry), false);
-  const check = focus.controller.revalidate(); focus.requests[1].resolve(null); await check; assert.deepEqual(focus.navigations, [false]); focus.controller.dispose();
+  const check = focus.controller.revalidate();
+  assert.equal(focus.requests[1].signal.aborted, true, "expiry supersedes background verification");
+  assert.equal(focus.controller.getSnapshot().status, "checking");
+  focus.requests[1].resolve(first); await backgroundCheck;
+  focus.requests[2].resolve(null); await check; assert.deepEqual(focus.navigations, [false]); focus.controller.dispose();
   const offline = fixture(); await activate(offline); const pending = offline.controller.revalidate();
   offline.requests[1].reject(new Error("offline")); await pending; assert.equal(offline.controller.getSnapshot().status, "blocked");
   assert.equal(offline.controller.capture(), null); await activate(offline); offline.controller.dispose();
@@ -153,7 +159,7 @@ async function main() {
   fail = true; const failed = await routeExports.GET(); assert.equal(failed.status, 503); assert.equal((await failed.text()).includes("private auth internals"), false); assert.equal(checks, 3);
 
   const provider = readFileSync("src/components/auth/request-scope-provider.tsx", "utf8");
-  for (const event of ["focus", "online", "pageshow", "pagehide", "visibilitychange"]) assert.ok(provider.includes(`"${event}"`));
+  assert.match(provider, /listenForScopeLifecycle\(controller.revalidate\)/);
   assert.match(provider, /hidden=\{!active\} inert=\{!active\}/);
   const route = readFileSync("src/app/api/v1/auth/request-scope/route.ts", "utf8");
   assert.match(route, /await getCurrentSession\(\)/); assert.match(route, /private, no-store/); assert.match(route, /status: 401/);

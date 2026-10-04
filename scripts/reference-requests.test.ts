@@ -99,7 +99,7 @@ async function harness(multiple = false, pendingMutation?: ReturnType<typeof def
   let endpoint = "/api/doctors", value: string | string[] = multiple ? [] : "";
   let serverOptions = [option], afterMutation = false;
   const answered = new Set<unknown>();
-  const component = runtime.mount(() => Select({ label: "طبيب", type: "doctors", canManage: true, value, multiple, optionsEndpoint: endpoint,
+  const component = runtime.mount(() => Select({ label: "طبيب", type: "doctors", canCreate: true, canManage: true, value, multiple, optionsEndpoint: endpoint,
     onChange(next) { value = next; component.dirty = true; } }));
   const probe = runtime.mount(() => useReference(endpoint));
   const api = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
-import { createRequestScopeController, listenForAuthTransitions, type VerifiedRequestScope } from "@/lib/auth/client-request-scope";
+import { createRequestScopeController, listenForAuthTransitions, listenForScopeLifecycle, type VerifiedRequestScope } from "@/lib/auth/client-request-scope";
 
 import { AppLoading } from "@/components/shell/app-loading";
 import { SWRConfig } from "swr";
@@ -33,22 +33,9 @@ export function RequestScopeProvider({ initial, children }: { initial: VerifiedR
   useEffect(() => store.connect(), [store]);
   useEffect(() => {
     const stop = listenForAuthTransitions(controller.transition);
-    const verifyVisible = () => { if (document.visibilityState === "visible") void controller.revalidate(); };
-    const visibility = () => { if (document.visibilityState === "hidden") controller.invalidate(); else verifyVisible(); };
-    const pageHide = () => controller.invalidate();
-    window.addEventListener("focus", verifyVisible);
-    window.addEventListener("online", verifyVisible);
-    window.addEventListener("pageshow", verifyVisible);
-    window.addEventListener("pagehide", pageHide);
-    document.addEventListener("visibilitychange", visibility);
-    verifyVisible();
+    const stopLifecycle = listenForScopeLifecycle(controller.revalidate);
     return () => {
-      stop(); controller.dispose();
-      window.removeEventListener("focus", verifyVisible);
-      window.removeEventListener("online", verifyVisible);
-      window.removeEventListener("pageshow", verifyVisible);
-      window.removeEventListener("pagehide", pageHide);
-      document.removeEventListener("visibilitychange", visibility);
+      stopLifecycle(); stop(); controller.dispose();
     };
   }, [controller]);
   useEffect(() => {

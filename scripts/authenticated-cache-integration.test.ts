@@ -12,9 +12,9 @@ async function main() {
   const Select = r.api.SmartSelect as unknown as typeof SmartSelect;
   const useReference = r.api.useSharedReference as unknown as typeof useSharedReference;
   let single: string | string[] = "one", multi: string | string[] = ["one"];
-  const first = r.mount(() => Select({ label: "Doctor", type: "doctors", optionsEndpoint: endpoint, value: single, canManage: true,
+  const first = r.mount(() => Select({ label: "Doctor", type: "doctors", optionsEndpoint: endpoint, value: single, canCreate: true, canManage: true,
     onChange(value) { single = value; first.dirty = true; } }));
-  const second = r.mount(() => Select({ label: "Doctors", type: "doctors", optionsEndpoint: endpoint, value: multi, multiple: true, canManage: true,
+  const second = r.mount(() => Select({ label: "Doctors", type: "doctors", optionsEndpoint: endpoint, value: multi, multiple: true, canCreate: true, canManage: true,
     onChange(value) { multi = value; second.dirty = true; } }));
   const probe = r.mount(() => useReference(endpoint));
   const catalog = r.mount(() => useReference(generic)); r.mount(() => useReference(hospital));
@@ -40,6 +40,7 @@ async function main() {
   assert.equal(probe.value.data?.some(item => item.id === "one"), false, "archive excluded from available options");
   assert.equal(single, "three");
   r.advance(60_001); probe.value.refreshIfStale(); await r.flush(); const preEdit = r.requests.at(-1)!;
+  await r.invoke(first, node => node.props.role === "combobox");
   await r.invoke(first, node => node.props["aria-label"] === "تعديل Added");
   await r.invoke(first, node => node.type === "input" && node.props.autoFocus === true, "onChange", { target: { value: "Edited" } });
   await r.invoke(first, node => node.type === "button" && node.props.className === "primary");
@@ -51,12 +52,12 @@ async function main() {
   assert.ok(JSON.stringify(nodes(second.value)).includes("Edited"), "other mounted consumer sees edit");
   assert.equal(single, "three"); assert.deepEqual(multi, ["one"]);
   await r.invoke(first, node => node.props["aria-label"] === "تعديل Edited");
-  assert.ok(nodes(first.value).some(node => node.props.role === "dialog"));
+  assert.ok(nodes(first.value).some(node => node.props.className === "smart-select__editor"));
   r.auth.deny(); await r.flush();
-  assert.equal(nodes(first.value).some(node => node.props.role === "dialog"), false, "old inline editor is hidden on denial");
+  assert.equal(nodes(first.value).some(node => node.props.className === "smart-select__editor"), false, "old inline editor is hidden on denial");
   assert.equal(r.auth.getSnapshot().reason, "access-denied");
   await r.activate();
-  assert.equal(nodes(first.value).some(node => node.props.role === "dialog"), false, "editor cannot revive in a new generation");
+  assert.equal(nodes(first.value).some(node => node.props.className === "smart-select__editor"), false, "editor cannot revive in a new generation");
   // A permission identity change must block the old protected tree and empty SWR.
   await r.changeIdentity("account-a-permissions-changed");
   assert.equal(r.auth.capture(), null); assert.equal(probe.value.data, undefined); assert.equal([...r.store.cache.keys()].length, 0);

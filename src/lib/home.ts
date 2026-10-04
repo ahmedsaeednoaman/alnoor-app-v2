@@ -74,7 +74,7 @@ const defaultDependencies: HomeReadDependencies = {
     const [row] = await postgresClient.unsafe<Array<{ count: string }>>(
       `select count(*)::text count
          from operations o
-        where o.status <> 'cancelled'
+        where o.status <> 'cancelled' and o.archived_at is null
           and o.operation_date = current_date
           and ($1::boolean = false or o.created_by_user_id = $2::uuid)`,
       [isEmployee(user), user.id],
@@ -90,7 +90,7 @@ const defaultDependencies: HomeReadDependencies = {
          from operations o
          left join doctors d on d.id=o.doctor_id
          left join hospitals h on h.id=o.hospital_id
-        where o.status <> 'cancelled'
+        where o.status <> 'cancelled' and o.archived_at is null
           and ($1::boolean = false or (o.created_by_user_id=$2::uuid and o.operation_date >= current_date-6))
         order by o.operation_date desc,o.daily_sequence desc
         limit $3`,
@@ -104,7 +104,7 @@ const defaultDependencies: HomeReadDependencies = {
         `select count(*)::text count
            from operations o
            left join operation_financial_reviews fr on fr.operation_id=o.id
-          where o.status='recorded'
+          where o.status='recorded' and o.archived_at is null
             and coalesce(fr.status,'awaiting_review')='awaiting_review'::financial_review_status`,
       ),
       postgresClient.unsafe<ReviewRow[]>(
@@ -114,7 +114,7 @@ const defaultDependencies: HomeReadDependencies = {
            left join operation_financial_reviews fr on fr.operation_id=o.id
            left join doctors d on d.id=o.doctor_id
            left join hospitals h on h.id=o.hospital_id
-          where o.status='recorded'
+          where o.status='recorded' and o.archived_at is null
             and coalesce(fr.status,'awaiting_review')='awaiting_review'::financial_review_status
           order by o.operation_date desc,o.daily_sequence desc
           limit $1`,
